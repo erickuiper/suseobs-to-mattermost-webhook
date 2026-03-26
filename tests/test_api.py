@@ -48,7 +48,9 @@ def test_healthz_readyz_version() -> None:
         assert client.get("/readyz").status_code == 200
         r = client.get("/version")
         assert r.status_code == 200
-        assert "version" in r.json()
+        body = r.json()
+        assert "version" in body
+        assert "git_sha" in body
 
 
 def test_webhook_requires_json_content_type() -> None:

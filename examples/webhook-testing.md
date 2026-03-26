@@ -120,7 +120,7 @@ Successful body shape (example):
 ```bash
 curl -sS http://127.0.0.1:8080/healthz
 curl -sS http://127.0.0.1:8080/readyz
-curl -sS http://127.0.0.1:8080/version
+curl -sS http://127.0.0.1:8080/version   # JSON: version (semver or 0.1.0+<sha>), git_sha
 ```
 
 ## Debug

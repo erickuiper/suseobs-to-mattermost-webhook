@@ -95,3 +95,5 @@ See [`examples/kubernetes-deployment.yaml`](examples/kubernetes-deployment.yaml)
 GitHub Actions runs **Ruff**, **pytest**, **pip-audit** on `requirements.txt`, builds the **Docker** image, scans it with **Trivy** (HIGH/CRITICAL, unfixed ignored), and pushes to **Docker Hub** as `erickuiper/suseobs-to-mattermost-webhook` on pushes to `main`.
 
 Configure repository secrets **`DOCKERHUB_USERNAME`** and **`DOCKERHUB_TOKEN`** (Docker Hub access token).
+
+**Releases:** Push a semver git tag `vX.Y.Z` to publish `X.Y.Z` and `latest` on Docker Hub; see [`docs/RELEASE.md`](docs/RELEASE.md). Use an explicit image tag (not only `latest`) in Kubernetes so rollouts pull the new image.

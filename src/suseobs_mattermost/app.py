@@ -7,10 +7,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from suseobs_mattermost import __version__
 from suseobs_mattermost.api.routes import router
 from suseobs_mattermost.config import Settings, load_settings
 from suseobs_mattermost.logging_config import setup_logging
+from suseobs_mattermost.version_info import get_version
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -24,7 +24,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(
         title="SUSE Observability → Mattermost",
-        version=__version__,
+        version=get_version(),
         lifespan=lifespan,
     )
     app.include_router(router)

@@ -11,13 +11,13 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from suseobs_mattermost import __version__
 from suseobs_mattermost.config import Settings
 from suseobs_mattermost.models.webhook import Envelope
 from suseobs_mattermost.services.formatter import render_message
 from suseobs_mattermost.services.health import liveness_ok, readiness_ok
 from suseobs_mattermost.services.mattermost import MattermostDeliveryError, send_incoming_webhook
 from suseobs_mattermost.services.parser import envelope_to_normalized
+from suseobs_mattermost.version_info import get_git_sha, get_version
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ async def readyz() -> dict[str, str]:
 
 @router.get("/version")
 async def version() -> dict[str, str]:
-    return {"version": __version__}
+    return {"version": get_version(), "git_sha": get_git_sha()}
 
 
 @router.post("/webhook/suse-obs")

@@ -42,6 +42,7 @@ spec:
     spec:
       containers:
         - name: webhook
+          # Prefer a pinned tag (e.g. 1.2.3 or sha-abc1234) from CI so rollouts always pull the new image
           image: docker.io/erickuiper/suseobs-to-mattermost-webhook:latest
           imagePullPolicy: IfNotPresent
           ports:
