@@ -21,7 +21,8 @@ COPY src/ ./src/
 COPY pyproject.toml .
 RUN pip install --no-cache-dir --no-deps -e .
 
-USER appuser
+# Numeric UID matches useradd above; avoids passwd name resolution at runtime.
+USER 65532
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz')" || exit 1
