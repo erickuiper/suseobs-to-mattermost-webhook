@@ -20,9 +20,10 @@ Environment variables (see [`examples/.env.example`](examples/.env.example)):
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `MATTERMOST_URL` | yes | Full incoming webhook URL (`https://…/hooks/…`) — **secret** |
-| `MATTERMOST_CHANNEL` | no | Channel name override (e.g. `town-square`) |
+| `MATTERMOST_CHANNEL` | no | Optional channel override: use the **channel handle** (URL slug: lowercase, hyphens, e.g. `alerts` not `Alerts`). Wrong values cause Mattermost **404**. Omit to use the webhook’s configured default channel. |
 | `MATTERMOST_TIMEOUT_SECONDS` | no | Outbound HTTP timeout (default `10`) |
 | `MATTERMOST_VERIFY_SSL` | no | Verify TLS for Mattermost HTTPS (default `true`; set `false` only for dev/test with invalid certs) |
+| `MATTERMOST_SSL_CA_BUNDLE` | no | Path to a PEM file with extra CA cert(s) for Mattermost (internal CA / self-signed); preferred over disabling verification |
 | `LOG_LEVEL` | no | `INFO`, `DEBUG`, etc. |
 | `APP_HOST` / `APP_PORT` | no | Bind address (default `0.0.0.0:8080`) |
 | `MESSAGE_TEMPLATE` | no | Inline template string |

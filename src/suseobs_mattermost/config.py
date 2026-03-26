@@ -47,6 +47,11 @@ class Settings(BaseSettings):
         validation_alias="MATTERMOST_TIMEOUT_SECONDS",
     )
     mattermost_verify_ssl: bool = Field(default=True, validation_alias="MATTERMOST_VERIFY_SSL")
+    mattermost_ssl_ca_bundle: Path | None = Field(
+        default=None,
+        validation_alias="MATTERMOST_SSL_CA_BUNDLE",
+        description="Path to PEM file (custom CA) for Mattermost HTTPS verification",
+    )
 
     message_template: str | None = Field(default=None, validation_alias="MESSAGE_TEMPLATE")
     message_template_path: Path | None = Field(
@@ -75,6 +80,13 @@ class Settings(BaseSettings):
             if s in ("1", "true", "yes", "on"):
                 return True
         return bool(v)
+
+    @field_validator("mattermost_ssl_ca_bundle", mode="before")
+    @classmethod
+    def empty_ca_bundle_none(cls, v: Any) -> Path | None:
+        if v is None or v == "":
+            return None
+        return v
 
     def resolved_message_template(self) -> str:
         if self.message_template_path is not None:

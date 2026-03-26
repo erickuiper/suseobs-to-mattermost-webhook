@@ -25,3 +25,23 @@ def test_mattermost_verify_ssl_env(mattermost_env: None, monkeypatch: pytest.Mon
     assert s.mattermost_verify_ssl is False
     monkeypatch.setenv("MATTERMOST_VERIFY_SSL", "true")
     assert Settings().mattermost_verify_ssl is True
+
+
+def test_mattermost_ssl_ca_bundle_env(
+    mattermost_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    pem = tmp_path / "corp.pem"
+    pem.write_text("x")
+    monkeypatch.setenv("MATTERMOST_SSL_CA_BUNDLE", str(pem))
+    s = Settings()
+    assert s.mattermost_ssl_ca_bundle == pem
+
+
+def test_mattermost_ssl_ca_bundle_empty_none(
+    mattermost_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MATTERMOST_SSL_CA_BUNDLE", "")
+    assert Settings().mattermost_ssl_ca_bundle is None

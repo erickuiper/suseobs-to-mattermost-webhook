@@ -132,6 +132,7 @@ async def suse_obs_webhook(
             channel=settings.mattermost_channel,
             timeout_seconds=settings.mattermost_timeout_seconds,
             verify_ssl=settings.mattermost_verify_ssl,
+            ssl_ca_bundle=settings.mattermost_ssl_ca_bundle,
         )
     except MattermostDeliveryError as e:
         logger.warning("[%s] mattermost delivery failed: %s", rid, e)

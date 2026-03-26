@@ -23,13 +23,17 @@ Full path: **`{base}/webhook/suse-obs`**
    export MATTERMOST_URL='https://your-mattermost.example.com/hooks/your-incoming-webhook-key'
    ```
 
-3. If Mattermost uses a **self-signed or untrusted certificate**, disable TLS verification **only for testing**:
+3. If Mattermost uses a **corporate or self-signed CA**, prefer pointing at a PEM bundle:
+
+   ```bash
+   export MATTERMOST_SSL_CA_BUNDLE=/path/to/your-ca.pem
+   ```
+
+   For quick local testing only, you can disable verification:
 
    ```bash
    export MATTERMOST_VERIFY_SSL=false
    ```
-
-   In production, fix the certificate or add your CA to the container trust store instead.
 
 4. If **`WEBHOOK_AUTH_TOKEN`** is set, include one of:
    - `Authorization: Bearer <token>`
