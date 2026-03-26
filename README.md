@@ -22,6 +22,7 @@ Environment variables (see [`examples/.env.example`](examples/.env.example)):
 | `MATTERMOST_URL` | yes | Full incoming webhook URL (`https://…/hooks/…`) — **secret** |
 | `MATTERMOST_CHANNEL` | no | Channel name override (e.g. `town-square`) |
 | `MATTERMOST_TIMEOUT_SECONDS` | no | Outbound HTTP timeout (default `10`) |
+| `MATTERMOST_VERIFY_SSL` | no | Verify TLS for Mattermost HTTPS (default `true`; set `false` only for dev/test with invalid certs) |
 | `LOG_LEVEL` | no | `INFO`, `DEBUG`, etc. |
 | `APP_HOST` / `APP_PORT` | no | Bind address (default `0.0.0.0:8080`) |
 | `MESSAGE_TEMPLATE` | no | Inline template string |

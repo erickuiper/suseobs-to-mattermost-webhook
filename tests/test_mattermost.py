@@ -43,6 +43,7 @@ async def test_send_success() -> None:
             text="t",
             channel=None,
             timeout_seconds=5.0,
+            verify_ssl=True,
         )
     mock_client.post.assert_called_once()
 
@@ -64,4 +65,5 @@ async def test_send_http_error() -> None:
                 text="t",
                 channel=None,
                 timeout_seconds=5.0,
+                verify_ssl=True,
             )

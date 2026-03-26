@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -45,6 +46,7 @@ class Settings(BaseSettings):
         default=10.0,
         validation_alias="MATTERMOST_TIMEOUT_SECONDS",
     )
+    mattermost_verify_ssl: bool = Field(default=True, validation_alias="MATTERMOST_VERIFY_SSL")
 
     message_template: str | None = Field(default=None, validation_alias="MESSAGE_TEMPLATE")
     message_template_path: Path | None = Field(
@@ -60,6 +62,19 @@ class Settings(BaseSettings):
     @classmethod
     def upper_log_level(cls, v: str) -> str:
         return v.upper()
+
+    @field_validator("mattermost_verify_ssl", mode="before")
+    @classmethod
+    def parse_verify_ssl(cls, v: Any) -> bool:
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in ("0", "false", "no", "off"):
+                return False
+            if s in ("1", "true", "yes", "on"):
+                return True
+        return bool(v)
 
     def resolved_message_template(self) -> str:
         if self.message_template_path is not None:

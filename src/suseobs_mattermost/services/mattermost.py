@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 logger = logging.getLogger(__name__)
+_insecure_tls_warned = False
 
 
 class MattermostDeliveryError(Exception):
@@ -31,15 +32,24 @@ async def send_incoming_webhook(
     text: str,
     channel: str | None,
     timeout_seconds: float,
+    verify_ssl: bool = True,
 ) -> None:
     payload = build_payload(text, channel)
     timeout = httpx.Timeout(timeout_seconds)
-    async with httpx.AsyncClient(timeout=timeout) as client:
+    global _insecure_tls_warned
+    if not verify_ssl and not _insecure_tls_warned:
+        _insecure_tls_warned = True
+        logger.warning(
+            "Mattermost TLS verification disabled (MATTERMOST_VERIFY_SSL=false); "
+            "use only for dev/test or fix the server certificate",
+        )
+    async with httpx.AsyncClient(timeout=timeout, verify=verify_ssl) as client:
         logger.debug(
-            "Posting to Mattermost webhook host=%s channel=%s text_len=%s",
+            "Posting to Mattermost webhook host=%s channel=%s text_len=%s verify_ssl=%s",
             _safe_host(webhook_url),
             channel or "(default)",
             len(text),
+            verify_ssl,
         )
         try:
             resp = await client.post(webhook_url, json=payload)

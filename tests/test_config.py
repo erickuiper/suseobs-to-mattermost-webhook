@@ -17,3 +17,11 @@ def test_resolved_template_default(mattermost_env: None) -> None:
     t = s.resolved_message_template()
     assert "SUSE Observability" in t
     assert "{{" in t or "$" in t
+
+
+def test_mattermost_verify_ssl_env(mattermost_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MATTERMOST_VERIFY_SSL", "false")
+    s = Settings()
+    assert s.mattermost_verify_ssl is False
+    monkeypatch.setenv("MATTERMOST_VERIFY_SSL", "true")
+    assert Settings().mattermost_verify_ssl is True
