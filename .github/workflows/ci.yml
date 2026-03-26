@@ -62,13 +62,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Run Trivy via official image (avoids trivy-action/setup-trivy binary install failures on runners)
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@v0.34.0
-        with:
-          image-ref: suseobs-mattermost:ci
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.69.1 image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            suseobs-mattermost:ci
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
