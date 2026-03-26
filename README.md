@@ -91,6 +91,6 @@ See [`examples/kubernetes-deployment.yaml`](examples/kubernetes-deployment.yaml)
 
 ## CI
 
-GitHub Actions runs **Ruff**, **pytest**, **pip-audit** on `requirements.txt`, builds the **Docker** image, scans it with **Trivy** (HIGH/CRITICAL, unfixed ignored), and pushes to **GHCR** on pushes to `main`.
+GitHub Actions runs **Ruff**, **pytest**, **pip-audit** on `requirements.txt`, builds the **Docker** image, scans it with **Trivy** (HIGH/CRITICAL, unfixed ignored), and pushes to **Docker Hub** as `erickuiper/suseobs-to-mattermost-webhook` on pushes to `main`.
 
-Adjust `REGISTRY` / image names in the workflow as needed.
+Configure repository secrets **`DOCKERHUB_USERNAME`** and **`DOCKERHUB_TOKEN`** (Docker Hub access token).

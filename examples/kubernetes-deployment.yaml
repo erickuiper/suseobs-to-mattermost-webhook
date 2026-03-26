@@ -42,7 +42,7 @@ spec:
     spec:
       containers:
         - name: webhook
-          image: ghcr.io/YOUR_ORG/suseobs-to-mattermost-webhook:latest
+          image: docker.io/erickuiper/suseobs-to-mattermost-webhook:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
