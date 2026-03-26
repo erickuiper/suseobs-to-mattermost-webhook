@@ -1,6 +1,7 @@
 # Runtime — pinned for reproducible builds (regenerate with pip-compile when changing pyproject)
-fastapi==0.115.6
+# Starlette >=0.49.1 required for CVE-2025-54121, CVE-2025-62727 (via FastAPI dependency chain)
+fastapi==0.135.2
 httpx==0.28.1
-pydantic==2.10.4
-pydantic-settings==2.7.0
-uvicorn[standard]==0.34.0
+pydantic==2.12.5
+pydantic-settings==2.12.0
+uvicorn[standard]==0.34.3
