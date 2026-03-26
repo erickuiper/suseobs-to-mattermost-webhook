@@ -1,0 +1,6 @@
+# Runtime — pinned for reproducible builds (regenerate with pip-compile when changing pyproject)
+fastapi==0.115.6
+httpx==0.28.1
+pydantic==2.10.4
+pydantic-settings==2.7.0
+uvicorn[standard]==0.34.0

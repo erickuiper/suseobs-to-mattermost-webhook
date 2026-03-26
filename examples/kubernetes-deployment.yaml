@@ -1,0 +1,86 @@
+# Example Deployment — adjust image, secrets, and resources for your cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: suseobs-webhook
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mattermost-webhook
+  namespace: suseobs-webhook
+type: Opaque
+stringData:
+  MATTERMOST_URL: "https://mattermost.example.com/hooks/REPLACE_ME"
+  # WEBHOOK_AUTH_TOKEN: "optional-shared-secret"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: suseobs-webhook-config
+  namespace: suseobs-webhook
+data:
+  APP_PORT: "8080"
+  LOG_LEVEL: "INFO"
+  MATTERMOST_CHANNEL: "alerts"
+  # SUSE_OBS_BASE_URL: "https://stackstate.example.com"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: suseobs-to-mattermost
+  namespace: suseobs-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: suseobs-to-mattermost
+  template:
+    metadata:
+      labels:
+        app: suseobs-to-mattermost
+    spec:
+      containers:
+        - name: webhook
+          image: ghcr.io/YOUR_ORG/suseobs-to-mattermost-webhook:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: suseobs-webhook-config
+            - secretRef:
+                name: mattermost-webhook
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: suseobs-to-mattermost
+  namespace: suseobs-webhook
+spec:
+  selector:
+    app: suseobs-to-mattermost
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http

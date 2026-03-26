@@ -1,0 +1,181 @@
+# OpenApi header is included in this file to support code highlighting in VSCode
+openapi: 3.0.3
+info:
+  title: StackState Webhook API
+  version: "1.0.0"
+paths:
+  /webhook:
+    post:
+      tags:
+        - webhook
+      summary: "Handle StackState event"
+      description: "Handle StackState Component health-state event"
+      operationId: handleEvent
+      requestBody:
+        description: "The event to handle."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Envelope"
+            example:
+              notificationId: 3e9992c3-f5a9-4c85-a0fb-f8730868cb66
+              event:
+                type: open
+                state: CRITICAL
+                title: HTTP - response time is above 3 seconds
+                triggeredTimeMs: 1701247920000
+              monitor:
+                name: HTTP - response time
+                identifier: urn:stackpack:kubernetes-v2:shared:monitor:kubernetes-v2:http-response-time
+                link: https://stackstate.example.com/#/monitors/155483794918865
+                tags: {}
+              component:
+                identifier: urn:endpoint:/customer.example.com:192.168.0.123
+                link: https://stackstate.example.com/#/components/urn:endpoint:%2Fcustomer.example.com:192.168.0.123
+                name: Kafka
+                type: service
+                tags:
+                  customer: example_com
+              notificationConfiguration:
+                name: example_com_webhook
+      responses:
+        "200":
+          description: "Event handled."
+        "400":
+          description: "Event or token was invalid."
+        "404":
+          description: "Invalid token."
+        "500":
+          description: "Internal error handling event."
+
+components:
+  schemas:
+    Envelope:
+      type: object
+      properties:
+        notificationId:
+          type: string
+          format: uuid
+        event:
+          $ref: "#/components/schemas/Event"
+        monitor:
+          $ref: "#/components/schemas/Monitor"
+        component:
+          $ref: "#/components/schemas/Component"
+        notificationConfiguration:
+          $ref: "#/components/schemas/NotificationConfiguration"
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - notificationId
+        - event
+        - component
+        - monitor
+        - notificationConfiguration
+        - metadata
+    Event:
+      type: object
+      discriminator:
+        propertyName: type
+        mapping:
+          open: "#/components/schemas/OpenEvent"
+          close: "#/components/schemas/CloseEvent"
+      oneOf:
+        - $ref: "#/components/schemas/OpenEvent"
+        - $ref: "#/components/schemas/CloseEvent"
+      required:
+        - type
+    OpenEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - open
+        state:
+          type: string
+          enum:
+            - DEVIATING
+            - CRITICAL
+        title:
+          type: string
+        triggeredTimeMs:
+          type: integer
+          format: int64
+        reason:
+          type: string
+      required:
+        - type
+        - state
+        - title
+        - triggeredTimeMs
+    CloseEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - close
+        reason:
+          type: string
+          enum:
+            - ConfigRemoved
+            - ConfigChanged
+            - ComponentRemoved
+            - ComponentChanged
+            - HealthStateResolved
+            - ChannelRemoved
+      required:
+        - type
+        - reason
+    Monitor:
+      type: object
+      properties:
+        name:
+          type: string
+        identifier:
+          type: string
+        link:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - name
+        - tags
+    Component:
+      type: object
+      properties:
+        identifier:
+          type: string
+        link:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - identifier
+        - link
+        - name
+        - type
+        - tags
+    NotificationConfiguration:
+      type: object
+      properties:
+        name:
+          type: string
+        identifier:
+          type: string
+        link:
+          type: string
+      required:
+        - name

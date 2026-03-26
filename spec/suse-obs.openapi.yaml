@@ -1,0 +1,28 @@
+openapi: 3.0.3
+info:
+  description: StackState's Webhook API specification
+  version: 0.0.1
+  title: StackState Webhook API
+  license:
+    name: "Apache 2.0"
+    url: "https://www.apache.org/licenses/LICENSE-2.0.html"
+  contact:
+    name: StackState
+    email: info@stackstate.com
+    url: "https://stackstate.com"
+  x-logo:
+    url: "https://raw.githubusercontent.com/StackVista/stackstate-docs/master/resources/logo/StackState-Color-padding.png"
+    href: "#top"
+externalDocs:
+  description: Documentation
+  url: "https://docs.stackstate.com/"
+paths:
+  /: { $ref: "webhook.api.yaml#/paths/%2Fwebhook"}
+security:
+  - Token: []
+components:
+  securitySchemes:
+    Token:
+      type: apiKey
+      in: header
+      name: X-StackState-Webhook-Token
