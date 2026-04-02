@@ -20,6 +20,9 @@ class NormalizedAlert:
     monitor_name: str
     monitor_link: str
     component_link: str
+    is_close_event: bool = False
+    monitoring_source_key: str = ""
+    monitor_identifier: str = ""
 
     def as_template_dict(self) -> dict[str, str]:
         return {
@@ -36,4 +39,6 @@ class NormalizedAlert:
             "monitor_name": self.monitor_name,
             "monitor_link": self.monitor_link,
             "component_link": self.component_link,
+            "monitor_identifier": self.monitor_identifier,
+            "monitoring_source_key": self.monitoring_source_key,
         }

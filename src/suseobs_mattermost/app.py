@@ -10,6 +10,8 @@ from fastapi import FastAPI
 from suseobs_mattermost.api.routes import router
 from suseobs_mattermost.config import Settings, load_settings
 from suseobs_mattermost.logging_config import setup_logging
+from suseobs_mattermost.services.batch import MonitoringBatchCoordinator
+from suseobs_mattermost.services.mattermost import send_incoming_webhook
 from suseobs_mattermost.version_info import get_version
 
 
@@ -18,9 +20,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     setup_logging(settings.log_level)
 
     @asynccontextmanager
-    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        _app.state.settings = settings
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        app.state.settings = settings
+
+        async def deliver_batched(text: str) -> None:
+            await send_incoming_webhook(
+                webhook_url=settings.mattermost_url,
+                text=text,
+                channel=settings.mattermost_channel,
+                timeout_seconds=settings.mattermost_timeout_seconds,
+                verify_ssl=settings.mattermost_verify_ssl,
+                ssl_ca_bundle=settings.mattermost_ssl_ca_bundle,
+            )
+
+        if settings.monitoring_batch_enabled:
+            app.state.monitoring_batch = MonitoringBatchCoordinator(
+                window_seconds=settings.monitoring_batch_window_seconds,
+                deliver=deliver_batched,
+            )
+        else:
+            app.state.monitoring_batch = None
+
         yield
+
+        batch = app.state.monitoring_batch
+        if batch is not None:
+            await batch.shutdown()
 
     app = FastAPI(
         title="SUSE Observability → Mattermost",

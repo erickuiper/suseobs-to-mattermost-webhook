@@ -13,6 +13,7 @@ from pydantic import ValidationError
 
 from suseobs_mattermost.config import Settings
 from suseobs_mattermost.models.webhook import Envelope
+from suseobs_mattermost.services.batch import MonitoringBatchCoordinator
 from suseobs_mattermost.services.formatter import render_message
 from suseobs_mattermost.services.health import liveness_ok, readiness_ok
 from suseobs_mattermost.services.mattermost import MattermostDeliveryError, send_incoming_webhook
@@ -120,6 +121,45 @@ async def suse_obs_webhook(
         normalized.notification_id,
         normalized.summary[:200],
     )
+
+    batch: MonitoringBatchCoordinator | None = getattr(
+        request.app.state,
+        "monitoring_batch",
+        None,
+    )
+
+    if normalized.is_close_event:
+        close_tpl = settings.resolved_close_message_template()
+        text = render_message(close_tpl, normalized)
+        logger.debug("[%s] close event mattermost text length=%s", rid, len(text))
+        try:
+            await send_incoming_webhook(
+                webhook_url=settings.mattermost_url,
+                text=text,
+                channel=settings.mattermost_channel,
+                timeout_seconds=settings.mattermost_timeout_seconds,
+                verify_ssl=settings.mattermost_verify_ssl,
+                ssl_ca_bundle=settings.mattermost_ssl_ca_bundle,
+            )
+        except MattermostDeliveryError as e:
+            logger.warning("[%s] mattermost delivery failed: %s", rid, e)
+            raise HTTPException(status_code=502, detail="Mattermost delivery failed") from e
+        except Exception as e:
+            logger.exception("[%s] unexpected error delivering to Mattermost", rid)
+            raise HTTPException(status_code=502, detail="Mattermost delivery failed") from e
+        return JSONResponse(status_code=200, content={"status": "accepted", "request_id": rid})
+
+    if batch is not None:
+        await batch.enqueue(normalized.monitoring_source_key, normalized)
+        logger.debug(
+            "[%s] queued for monitoring batch key=%s",
+            rid,
+            normalized.monitoring_source_key,
+        )
+        return JSONResponse(
+            status_code=200,
+            content={"status": "accepted", "request_id": rid, "batched": True},
+        )
 
     template = settings.resolved_message_template()
     text = render_message(template, normalized)

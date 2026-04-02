@@ -8,7 +8,7 @@ Inbound payloads follow [`spec/suse-obs.webhook-api.yaml`](spec/suse-obs.webhook
 
 - **FastAPI** HTTP server
 - **Pydantic** models for the StackState `Envelope` and discriminated `event` (`open` / `close`)
-- **Normalized alert** (`NormalizedAlert`) used only for templating and delivery
+- **Normalized alert** (`NormalizedAlert`) used only for templating and delivery; **close** events use `CLOSE_MESSAGE_TEMPLATE`; optional **open**-event batching per monitoring source
 - **string.Template** + `{{ mustache }}`-style placeholders for safe, deterministic rendering (no arbitrary code execution)
 - **httpx** async client to POST to Mattermost
 - **Kubernetes**: `GET /healthz` (liveness), `GET /readyz` (readiness), `GET /version`
@@ -30,6 +30,9 @@ Environment variables (see [`examples/.env.example`](examples/.env.example)):
 | `MESSAGE_TEMPLATE_PATH` | no | Path to template file (wins over `MESSAGE_TEMPLATE` if set) |
 | `SUSE_OBS_BASE_URL` | no | If set, used as the primary “server URL” in messages instead of links from the payload |
 | `WEBHOOK_AUTH_TOKEN` | no | If set, callers must send `X-StackState-Webhook-Token: …` (per StackState spec), or `Authorization: Bearer …`, or `X-Webhook-Token: …` |
+| `CLOSE_MESSAGE_TEMPLATE` | no | Mattermost text for **close** events only (default `{{ summary }}` — summary-only line) |
+| `MONITORING_BATCH_ENABLED` | no | If `true`, **open** events are batched per monitor (`monitor.identifier`, else `monitor.name`) and one summary is sent after each window (default `false`) |
+| `MONITORING_BATCH_WINDOW_SECONDS` | no | Batch window length in seconds (default `60`; minimum `0.01`). **In-memory only** — use one replica when batching is enabled |
 
 Required settings are validated at startup; the process fails fast if `MATTERMOST_URL` is missing.
 
@@ -37,7 +40,7 @@ Required settings are validated at startup; the process fails fast if `MATTERMOS
 
 Default template is Markdown suitable for Mattermost (`**bold**`, lists, etc.). Placeholders:
 
-- `{{ summary }}`, `{{ severity }}`, `{{ status }}`, `{{ error_details }}`
+- `{{ summary }}`, `{{ severity }}`, `{{ status }}`, `{{ error_details }}`, `{{ monitor_identifier }}`, `{{ monitoring_source_key }}`
 - `{{ resource_name }}`, `{{ resource_type }}`, `{{ resource_identifier }}`
 - `{{ suse_obs_name }}`, `{{ suse_obs_url }}`
 - `{{ notification_id }}`, `{{ monitor_name }}`, `{{ monitor_link }}`, `{{ component_link }}`
@@ -51,6 +54,7 @@ After `{{ … }}` substitution, Python’s `string.Template` runs so you can als
 - Monitor `tags` in the spec are an array of strings; some deployments send objects — those are coerced to string pairs for internal use.
 - **Server display name** uses `notificationConfiguration.name`, then optional `metadata.serverName` / `metadata.stackstateUrl`, then host from a URL.
 - **Server URL** prefers `SUSE_OBS_BASE_URL` when set; otherwise the first non-empty link among `monitor.link`, `component.link`, `notificationConfiguration.link`.
+- **Batching key** for `MONITORING_BATCH_ENABLED` is `monitor.identifier` when present, otherwise `monitor.name` (logical “monitoring source” for coalescing open events).
 
 ## Run locally
 

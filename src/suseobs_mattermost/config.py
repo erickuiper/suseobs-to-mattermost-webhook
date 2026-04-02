@@ -27,6 +27,8 @@ DEFAULT_MESSAGE_TEMPLATE = """**SUSE Observability Alert**
 - Monitor: {{ monitor_name }}
 """
 
+DEFAULT_CLOSE_MESSAGE_TEMPLATE = "{{ summary }}"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -63,6 +65,20 @@ class Settings(BaseSettings):
 
     webhook_auth_token: str | None = Field(default=None, validation_alias="WEBHOOK_AUTH_TOKEN")
 
+    close_message_template: str | None = Field(
+        default=None,
+        validation_alias="CLOSE_MESSAGE_TEMPLATE",
+    )
+    monitoring_batch_enabled: bool = Field(
+        default=False,
+        validation_alias="MONITORING_BATCH_ENABLED",
+    )
+    monitoring_batch_window_seconds: float = Field(
+        default=60.0,
+        ge=0.01,
+        validation_alias="MONITORING_BATCH_WINDOW_SECONDS",
+    )
+
     @field_validator("log_level")
     @classmethod
     def upper_log_level(cls, v: str) -> str:
@@ -71,6 +87,19 @@ class Settings(BaseSettings):
     @field_validator("mattermost_verify_ssl", mode="before")
     @classmethod
     def parse_verify_ssl(cls, v: Any) -> bool:
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in ("0", "false", "no", "off"):
+                return False
+            if s in ("1", "true", "yes", "on"):
+                return True
+        return bool(v)
+
+    @field_validator("monitoring_batch_enabled", mode="before")
+    @classmethod
+    def parse_monitoring_batch_enabled(cls, v: Any) -> bool:
         if isinstance(v, bool):
             return v
         if isinstance(v, str):
@@ -95,6 +124,11 @@ class Settings(BaseSettings):
         if self.message_template:
             return self.message_template
         return DEFAULT_MESSAGE_TEMPLATE
+
+    def resolved_close_message_template(self) -> str:
+        if self.close_message_template:
+            return self.close_message_template
+        return DEFAULT_CLOSE_MESSAGE_TEMPLATE
 
 
 def load_settings() -> Settings:

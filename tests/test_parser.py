@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from suseobs_mattermost.models.webhook import Envelope
-from suseobs_mattermost.services.parser import envelope_to_normalized
+from suseobs_mattermost.services.parser import envelope_to_normalized, monitoring_source_key
 
 
 def _minimal_open_payload() -> dict:
@@ -63,3 +63,23 @@ def test_close_event() -> None:
     assert "closed" in n.status.lower()
     assert n.severity == "resolved"
     assert "HealthStateResolved" in n.error_details
+    assert n.is_close_event is True
+    assert n.monitoring_source_key == (
+        "urn:stackpack:kubernetes-v2:shared:monitor:kubernetes-v2:http-response-time"
+    )
+    assert "kubernetes-v2:http-response-time" in n.monitor_identifier
+
+
+def test_monitoring_source_key_falls_back_to_name() -> None:
+    data = _minimal_open_payload()
+    data["monitor"] = {"name": "OnlyName", "tags": []}
+    env = Envelope.model_validate(data)
+    assert monitoring_source_key(env) == "OnlyName"
+    n = envelope_to_normalized(env, None)
+    assert n.monitoring_source_key == "OnlyName"
+
+
+def test_open_event_not_close() -> None:
+    env = Envelope.model_validate(_minimal_open_payload())
+    n = envelope_to_normalized(env, None)
+    assert n.is_close_event is False
