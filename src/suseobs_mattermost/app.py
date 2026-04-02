@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from suseobs_mattermost.api.routes import router
 from suseobs_mattermost.config import Settings, load_settings
 from suseobs_mattermost.logging_config import setup_logging
+from suseobs_mattermost.middleware.access_logging import ProbeQuietAccessLogMiddleware
 from suseobs_mattermost.services.batch import MonitoringBatchCoordinator
 from suseobs_mattermost.services.mattermost import send_incoming_webhook
 from suseobs_mattermost.version_info import get_version
@@ -36,7 +37,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if settings.monitoring_batch_enabled:
             app.state.monitoring_batch = MonitoringBatchCoordinator(
                 window_seconds=settings.monitoring_batch_window_seconds,
-                deliver=deliver_batched,
+                deliver_batch=deliver_batched,
             )
         else:
             app.state.monitoring_batch = None
@@ -52,5 +53,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version=get_version(),
         lifespan=lifespan,
     )
+    app.add_middleware(ProbeQuietAccessLogMiddleware)
     app.include_router(router)
     return app

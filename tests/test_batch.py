@@ -46,46 +46,65 @@ def test_render_batch_counts_by_resource_and_status() -> None:
     assert "open (DEVIATING)" in text
     lines = [ln for ln in text.splitlines() if "Kafka" in ln and "CRITICAL" in ln]
     assert lines and "| 2 |" in lines[0]
-    assert "Total notifications in window: 3" in text
+    assert "Total throttled notifications in window: 3" in text
 
 
 @pytest.mark.asyncio
-async def test_coordinator_merges_same_key_within_window() -> None:
-    sent: list[str] = []
-
-    async def capture(t: str) -> None:
-        sent.append(t)
-
-    deliver = AsyncMock(side_effect=capture)
-
-    c = MonitoringBatchCoordinator(window_seconds=0.04, deliver=deliver)
+async def test_first_open_immediate_followups_batched() -> None:
+    indiv = AsyncMock()
+    batch_deliver = AsyncMock()
+    c = MonitoringBatchCoordinator(window_seconds=0.05, deliver_batch=batch_deliver)
     a1 = _alert("Kafka", "open (CRITICAL)", "urn:key1")
     a2 = _alert("Redis", "open (DEVIATING)", "urn:key1")
-    await c.enqueue("urn:key1", a1)
-    await c.enqueue("urn:key1", a2)
-    await asyncio.sleep(0.1)
-    await c.shutdown()
 
-    deliver.assert_called_once()
-    assert "Kafka" in sent[0]
-    assert "Redis" in sent[0]
+    assert await c.process_open("urn:key1", a1, deliver_individual=indiv) is True
+    indiv.assert_called_once_with(a1)
+
+    assert await c.process_open("urn:key1", a2, deliver_individual=indiv) is False
+    indiv.assert_called_once()
+
+    await asyncio.sleep(0.12)
+    batch_deliver.assert_called_once()
+    combined = batch_deliver.call_args[0][0]
+    assert "Redis" in combined
+    assert "Total throttled notifications in window: 1" in combined
+    await c.shutdown()
 
 
 @pytest.mark.asyncio
-async def test_coordinator_separate_keys_separate_messages() -> None:
-    deliver = AsyncMock()
-    c = MonitoringBatchCoordinator(window_seconds=0.04, deliver=deliver)
-    await c.enqueue("urn:a", _alert("X", "open (CRITICAL)", "urn:a"))
-    await c.enqueue("urn:b", _alert("Y", "open (CRITICAL)", "urn:b"))
-    await asyncio.sleep(0.1)
+async def test_different_keys_each_first_is_immediate_no_batch_message() -> None:
+    """Separate monitoring contexts: each first open is delivered now; no follow-ups → no batch."""
+    indiv = AsyncMock()
+    batch_deliver = AsyncMock()
+    c = MonitoringBatchCoordinator(window_seconds=0.05, deliver_batch=batch_deliver)
+    await c.process_open("urn:a", _alert("X", "open (CRITICAL)", "urn:a"), deliver_individual=indiv)
+    await c.process_open("urn:b", _alert("Y", "open (CRITICAL)", "urn:b"), deliver_individual=indiv)
+    await asyncio.sleep(0.12)
+    assert indiv.call_count == 2
+    batch_deliver.assert_not_called()
     await c.shutdown()
-    assert deliver.call_count == 2
 
 
 @pytest.mark.asyncio
-async def test_shutdown_cancels_pending_batch() -> None:
-    deliver = AsyncMock()
-    c = MonitoringBatchCoordinator(window_seconds=30.0, deliver=deliver)
-    await c.enqueue("urn:x", _alert("Z", "open (CRITICAL)", "urn:x"))
+async def test_shutdown_cancels_pending_timer_only_first_sent() -> None:
+    indiv = AsyncMock()
+    batch_deliver = AsyncMock()
+    c = MonitoringBatchCoordinator(window_seconds=30.0, deliver_batch=batch_deliver)
+    await c.process_open("urn:x", _alert("Z", "open (CRITICAL)", "urn:x"), deliver_individual=indiv)
+    indiv.assert_called_once()
     await c.shutdown()
-    deliver.assert_not_called()
+    batch_deliver.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_drops_queued_followups() -> None:
+    indiv = AsyncMock()
+    batch_deliver = AsyncMock()
+    c = MonitoringBatchCoordinator(window_seconds=30.0, deliver_batch=batch_deliver)
+    a1 = _alert("A", "open (CRITICAL)", "k")
+    a2 = _alert("B", "open (CRITICAL)", "k")
+    await c.process_open("k", a1, deliver_individual=indiv)
+    await c.process_open("k", a2, deliver_individual=indiv)
+    await c.shutdown()
+    indiv.assert_called_once()
+    batch_deliver.assert_not_called()

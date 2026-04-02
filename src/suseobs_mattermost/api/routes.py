@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from suseobs_mattermost.config import Settings
+from suseobs_mattermost.models.normalized import NormalizedAlert
 from suseobs_mattermost.models.webhook import Envelope
 from suseobs_mattermost.services.batch import MonitoringBatchCoordinator
 from suseobs_mattermost.services.formatter import render_message
@@ -150,15 +151,36 @@ async def suse_obs_webhook(
         return JSONResponse(status_code=200, content={"status": "accepted", "request_id": rid})
 
     if batch is not None:
-        await batch.enqueue(normalized.monitoring_source_key, normalized)
+        async def deliver_individual(alert: NormalizedAlert) -> None:
+            tpl = settings.resolved_message_template()
+            t = render_message(tpl, alert)
+            await send_incoming_webhook(
+                webhook_url=settings.mattermost_url,
+                text=t,
+                channel=settings.mattermost_channel,
+                timeout_seconds=settings.mattermost_timeout_seconds,
+                verify_ssl=settings.mattermost_verify_ssl,
+                ssl_ca_bundle=settings.mattermost_ssl_ca_bundle,
+            )
+
+        immediate = await batch.process_open(
+            normalized.monitoring_source_key,
+            normalized,
+            deliver_individual=deliver_individual,
+        )
         logger.debug(
-            "[%s] queued for monitoring batch key=%s",
+            "[%s] monitoring batch key=%s immediate=%s",
             rid,
             normalized.monitoring_source_key,
+            immediate,
         )
         return JSONResponse(
             status_code=200,
-            content={"status": "accepted", "request_id": rid, "batched": True},
+            content={
+                "status": "accepted",
+                "request_id": rid,
+                "batched": not immediate,
+            },
         )
 
     template = settings.resolved_message_template()
