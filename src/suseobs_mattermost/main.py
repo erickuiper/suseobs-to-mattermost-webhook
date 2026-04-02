@@ -13,6 +13,7 @@ def main() -> None:
         host=settings.app_host,
         port=settings.app_port,
         log_level=settings.log_level.lower(),
+        access_log=False,
     )
 
 

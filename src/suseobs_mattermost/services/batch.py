@@ -12,6 +12,14 @@ from suseobs_mattermost.models.normalized import NormalizedAlert
 
 logger = logging.getLogger(__name__)
 
+_LOG_KEY_MAX = 120
+
+
+def _log_key(key: str) -> str:
+    if len(key) <= _LOG_KEY_MAX:
+        return key
+    return f"{key[:_LOG_KEY_MAX]}…"
+
 
 def _md_cell(value: str) -> str:
     return value.replace("|", " ").replace("\n", " ")
@@ -90,6 +98,7 @@ class MonitoringBatchCoordinator:
         individual delivery; ``False`` if it was queued for the batch summary.
         """
         immediate = False
+        queued_len = 0
         async with self._lock:
             if key not in self._sessions:
                 self._sessions[key] = _Session(
@@ -99,9 +108,25 @@ class MonitoringBatchCoordinator:
                 immediate = True
             else:
                 self._sessions[key].buffer.append(alert)
+                queued_len = len(self._sessions[key].buffer)
 
         if immediate:
+            logger.info(
+                "monitoring_batch immediate_delivery monitoring_key=%s notification_id=%s "
+                "window_seconds=%s",
+                _log_key(key),
+                alert.notification_id,
+                self._window,
+            )
             await deliver_individual(alert)
+        else:
+            logger.info(
+                "monitoring_batch queued_follow_up monitoring_key=%s notification_id=%s "
+                "queued_in_window=%s",
+                _log_key(key),
+                alert.notification_id,
+                queued_len,
+            )
         return immediate
 
     async def _flush_after(self, key: str) -> None:
@@ -115,12 +140,24 @@ class MonitoringBatchCoordinator:
             return
         buffer = session.buffer
         if not buffer:
+            logger.debug(
+                "monitoring_batch window_end monitoring_key=%s no_follow_ups",
+                _log_key(key),
+            )
             return
+        logger.info(
+            "monitoring_batch flush monitoring_key=%s throttled_notifications=%s",
+            _log_key(key),
+            len(buffer),
+        )
         text = render_monitoring_batch_message(buffer)
         try:
             await self._deliver_batch(text)
         except Exception:
-            logger.exception("Batched Mattermost delivery failed monitoring_key=%s", key)
+            logger.exception(
+                "Batched Mattermost delivery failed monitoring_key=%s",
+                _log_key(key),
+            )
 
     async def shutdown(self) -> None:
         async with self._lock:
