@@ -5,7 +5,19 @@ from __future__ import annotations
 from urllib.parse import urlparse
 
 from suseobs_mattermost.models.normalized import NormalizedAlert
-from suseobs_mattermost.models.webhook import Envelope, OpenEvent
+from suseobs_mattermost.models.webhook import CloseEvent, Envelope, OpenEvent
+
+
+def monitoring_source_key(envelope: Envelope) -> str:
+    """
+    Stable key for batching alerts from the same monitor (spec: monitor.identifier, else name).
+    Corresponds to a logical "source.monitoring" identity in the webhook payload.
+    """
+    ident = (envelope.monitor.identifier or "").strip()
+    if ident:
+        return ident
+    name = (envelope.monitor.name or "").strip()
+    return name or "unknown-monitor"
 
 
 def _pick_suse_obs_url(envelope: Envelope, base_url: str | None) -> str:
@@ -46,6 +58,9 @@ def envelope_to_normalized(envelope: Envelope, suse_obs_base_url: str | None) ->
     monitor_link = (mon.link or "").strip()
     component_link = (comp.link or "").strip()
 
+    is_close = isinstance(ev, CloseEvent)
+    mid = (mon.identifier or "").strip()
+
     if isinstance(ev, OpenEvent):
         summary = ev.title
         severity = ev.state
@@ -55,7 +70,7 @@ def envelope_to_normalized(envelope: Envelope, suse_obs_base_url: str | None) ->
             error_parts.append(ev.reason)
         error_details = "\n".join(error_parts)
     else:
-        # CloseEvent — spec oneOf close
+        # CloseEvent — spec oneOf close; summary is the close line only (templates may shorten)
         summary = f"Alert closed: {ev.reason}"
         severity = "resolved"
         status = "closed"
@@ -75,4 +90,7 @@ def envelope_to_normalized(envelope: Envelope, suse_obs_base_url: str | None) ->
         monitor_name=mon.name,
         monitor_link=monitor_link,
         component_link=component_link,
+        is_close_event=is_close,
+        monitoring_source_key=monitoring_source_key(envelope),
+        monitor_identifier=mid,
     )

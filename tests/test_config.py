@@ -45,3 +45,24 @@ def test_mattermost_ssl_ca_bundle_empty_none(
 ) -> None:
     monkeypatch.setenv("MATTERMOST_SSL_CA_BUNDLE", "")
     assert Settings().mattermost_ssl_ca_bundle is None
+
+
+def test_resolved_close_message_template_default(mattermost_env: None) -> None:
+    s = Settings()
+    assert s.resolved_close_message_template() == "{{ summary }}"
+
+
+def test_resolved_close_message_template_override(
+    mattermost_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CLOSE_MESSAGE_TEMPLATE", "**{{ summary }}**")
+    assert Settings().resolved_close_message_template() == "**{{ summary }}**"
+
+
+def test_monitoring_batch_env(mattermost_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MONITORING_BATCH_ENABLED", "true")
+    monkeypatch.setenv("MONITORING_BATCH_WINDOW_SECONDS", "120")
+    s = Settings()
+    assert s.monitoring_batch_enabled is True
+    assert s.monitoring_batch_window_seconds == 120.0
