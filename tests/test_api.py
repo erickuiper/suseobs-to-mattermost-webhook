@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from suseobs_mattermost.app import create_app
 from suseobs_mattermost.config import Settings
+from tests.doubles import mattermost_send_mock
 
 
 def _settings(**kwargs) -> Settings:
@@ -162,8 +163,7 @@ def test_webhook_close_uses_close_template(mock_send: AsyncMock) -> None:
     assert "HealthStateResolved" in text
 
 
-@patch("suseobs_mattermost.app.send_incoming_webhook", new_callable=AsyncMock)
-def test_webhook_batch_deferred_delivery(mock_send: AsyncMock) -> None:
+def test_webhook_batch_deferred_delivery() -> None:
     body = _sample_body()
     body["monitor"]["identifier"] = "urn:batch:test"
     app = create_app(
@@ -172,28 +172,31 @@ def test_webhook_batch_deferred_delivery(mock_send: AsyncMock) -> None:
             monitoring_batch_window_seconds=0.06,
         ),
     )
-    with TestClient(app) as client:
-        r1 = client.post(
-            "/webhook/suse-obs",
-            json=body,
-            headers={"Content-Type": "application/json"},
-        )
-        body2 = {**body, "notificationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}
-        body2["component"] = {**body["component"], "name": "OtherSvc"}
-        r2 = client.post(
-            "/webhook/suse-obs",
-            json=body2,
-            headers={"Content-Type": "application/json"},
-        )
-        assert r1.status_code == 200
-        assert r1.json().get("batched") is True
-        assert r2.status_code == 200
-        mock_send.assert_not_called()
-        # Stay inside TestClient so lifespan does not cancel batch timers.
-        time.sleep(0.15)
-        mock_send.assert_called_once()
-        batched = mock_send.call_args.kwargs["text"]
-    assert "Svc" in batched or "OtherSvc" in batched
+    with mattermost_send_mock() as mock_send:
+        with TestClient(app) as client:
+            r1 = client.post(
+                "/webhook/suse-obs",
+                json=body,
+                headers={"Content-Type": "application/json"},
+            )
+            body2 = {**body, "notificationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}
+            body2["component"] = {**body["component"], "name": "OtherSvc"}
+            r2 = client.post(
+                "/webhook/suse-obs",
+                json=body2,
+                headers={"Content-Type": "application/json"},
+            )
+            assert r1.status_code == 200
+            assert r1.json().get("batched") is False
+            assert r2.status_code == 200
+            assert r2.json().get("batched") is True
+            mock_send.assert_called_once()
+            first_text = mock_send.call_args.kwargs["text"]
+            assert "Something broke" in first_text or "Svc" in first_text
+            time.sleep(0.15)
+            assert mock_send.call_count == 2
+            batched = mock_send.call_args_list[1][1]["text"]
+    assert "OtherSvc" in batched
     assert "batched alerts" in batched.lower()
 
 

@@ -36,7 +36,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if settings.monitoring_batch_enabled:
             app.state.monitoring_batch = MonitoringBatchCoordinator(
                 window_seconds=settings.monitoring_batch_window_seconds,
-                deliver=deliver_batched,
+                deliver_batch=deliver_batched,
             )
         else:
             app.state.monitoring_batch = None
