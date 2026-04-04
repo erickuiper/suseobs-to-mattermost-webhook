@@ -111,6 +111,39 @@ def test_integration_close_delivers_immediately_not_batched() -> None:
         assert "HealthStateResolved" in mock_mm.call_args.kwargs["text"]
 
 
+def test_integration_three_opens_same_monitor_one_immediate_and_one_summary() -> None:
+    """Exactly the user story: 1st Mattermost now, 2nd+3rd throttled → one summary after window."""
+    mid = "urn:mon:three"
+    ids = (
+        "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        "cccccccc-cccc-cccc-cccc-cccccccccccc",
+    )
+    with mattermost_send_mock() as mock_mm:
+        app = create_app(_batch_settings())
+        with TestClient(app) as client:
+            for i, nid in enumerate(ids):
+                r = _post_json(
+                    client,
+                    _open_body(
+                        notification_id=nid,
+                        monitor_identifier=mid,
+                        component_name=f"Res{i}",
+                        title=f"Title{i}",
+                    ),
+                )
+                assert r.status_code == 200
+                assert r.json().get("batched") is (i != 0)
+            assert mock_mm.call_count == 1
+            assert "Title0" in mock_mm.call_args.kwargs["text"]
+            time.sleep(_WAIT)
+            assert mock_mm.call_count == 2
+            batch_text = mock_mm.call_args_list[1][1]["text"]
+    assert "Total throttled notifications in window: 2" in batch_text
+    assert "Res1" in batch_text
+    assert "Res2" in batch_text
+
+
 def test_integration_same_monitor_throttled_followup() -> None:
     with mattermost_send_mock() as mock_mm:
         app = create_app(_batch_settings())

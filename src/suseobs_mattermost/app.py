@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -14,6 +15,8 @@ from suseobs_mattermost.middleware.access_logging import ProbeQuietAccessLogMidd
 from suseobs_mattermost.services.batch import MonitoringBatchCoordinator
 from suseobs_mattermost.services.mattermost import send_incoming_webhook
 from suseobs_mattermost.version_info import get_version
+
+_log = logging.getLogger(__name__)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -39,8 +42,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 window_seconds=settings.monitoring_batch_window_seconds,
                 deliver_batch=deliver_batched,
             )
+            _log.info(
+                "Open-alert batching enabled: first open per monitor is sent immediately; "
+                "further opens within %.2fs are summarized in one Mattermost message. "
+                "Use a single replica (or disable batching) if you scale horizontally.",
+                settings.monitoring_batch_window_seconds,
+            )
         else:
             app.state.monitoring_batch = None
+            _log.info(
+                "Open-alert batching is off (MONITORING_BATCH_ENABLED=false or unset): "
+                "every open webhook is sent to Mattermost immediately. "
+                "Set MONITORING_BATCH_ENABLED=true to throttle follow-ups per monitor.",
+            )
 
         yield
 

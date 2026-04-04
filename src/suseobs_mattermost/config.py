@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     monitoring_batch_enabled: bool = Field(
         default=False,
         validation_alias="MONITORING_BATCH_ENABLED",
+        description=(
+            "When false (default), each open alert is sent to Mattermost immediately. "
+            "When true, the first open per monitor posts immediately and further opens "
+            "within MONITORING_BATCH_WINDOW_SECONDS are combined into one message."
+        ),
     )
     monitoring_batch_window_seconds: float = Field(
         default=60.0,
