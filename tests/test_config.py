@@ -60,6 +60,11 @@ def test_resolved_close_message_template_override(
     assert Settings().resolved_close_message_template() == "**{{ summary }}**"
 
 
+def test_monitoring_batch_default_disabled(mattermost_env: None) -> None:
+    """Without MONITORING_BATCH_ENABLED, every open is sent to Mattermost immediately."""
+    assert Settings().monitoring_batch_enabled is False
+
+
 def test_monitoring_batch_env(mattermost_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MONITORING_BATCH_ENABLED", "true")
     monkeypatch.setenv("MONITORING_BATCH_WINDOW_SECONDS", "120")

@@ -31,10 +31,28 @@ Environment variables (see [`examples/.env.example`](examples/.env.example)):
 | `SUSE_OBS_BASE_URL` | no | If set, used as the primary “server URL” in messages instead of links from the payload |
 | `WEBHOOK_AUTH_TOKEN` | no | If set, callers must send `X-StackState-Webhook-Token: …` (per StackState spec), or `Authorization: Bearer …`, or `X-Webhook-Token: …` |
 | `CLOSE_MESSAGE_TEMPLATE` | no | Mattermost text for **close** events only (default `{{ summary }}` — summary-only line) |
-| `MONITORING_BATCH_ENABLED` | no | If `true`, the **first** **open** per monitor is sent immediately; further opens for the same monitor within the window are combined into **one** summary when the window ends. Another monitor’s first open is still immediate (default `false`) |
+| `MONITORING_BATCH_ENABLED` | no | **`false` by default.** Set to **`true`** for throttling: the **first** **open** per monitor is sent immediately; further opens for the **same** monitor within the window are combined into **one** summary when the window ends. Another monitor’s first open is still immediate |
 | `MONITORING_BATCH_WINDOW_SECONDS` | no | Batch window length in seconds (default `60`; minimum `0.01`). **In-memory only** — use one replica when batching is enabled |
 
 Required settings are validated at startup; the process fails fast if `MATTERMOST_URL` is missing.
+
+### Open-alert throttling (batching)
+
+**Without `MONITORING_BATCH_ENABLED=true`, every open alert is delivered to Mattermost immediately** — there is no delay or summarization. This matches the default for backward compatibility.
+
+When batching **is** enabled, for a fixed `monitor.identifier` (or `monitor.name` if the identifier is empty):
+
+1. **1st** open in a quiet period → full template message to Mattermost **right away**.
+2. **2nd, 3rd, …** opens **before the window expires** → held in memory; **no** Mattermost post yet.
+3. When the window ends → **one** Mattermost message with a table of counts (those follow-ups only).
+
+**If you still see every alert immediately:**
+
+- Confirm **`MONITORING_BATCH_ENABLED=true`** in the container env (startup logs state whether batching is on or off).
+- Use **one replica** while batching is on; multiple pods each keep separate state, so each pod can treat a request as “first” and send immediately.
+- Batching groups by **`monitor.identifier`** (else **`monitor.name`**). If SUSE Observability sends a **different** identifier on every notification, each one is a separate “monitor” and will each get an immediate first post.
+
+See [`tests/test_integration_webhook.py`](tests/test_integration_webhook.py) for examples with batching enabled.
 
 ## Message templating
 

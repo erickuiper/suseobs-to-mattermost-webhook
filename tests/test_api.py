@@ -1,6 +1,7 @@
 """HTTP API tests."""
 
 import time
+import uuid
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
@@ -87,6 +88,22 @@ def test_webhook_validation_error() -> None:
     assert r.status_code == 400
 
 
+def test_three_opens_batching_disabled_sends_three_mattermost_messages() -> None:
+    """Documents default/off behavior: no MONITORING_BATCH_ENABLED → no throttling."""
+    app = create_app(_settings())
+    with mattermost_send_mock() as mock_mm:
+        with TestClient(app) as client:
+            for _ in range(3):
+                body = _sample_body()
+                body["notificationId"] = str(uuid.uuid4())
+                client.post(
+                    "/webhook/suse-obs",
+                    json=body,
+                    headers={"Content-Type": "application/json"},
+                )
+    assert mock_mm.call_count == 3
+
+
 @patch("suseobs_mattermost.api.routes.send_incoming_webhook", new_callable=AsyncMock)
 def test_webhook_success(mock_send: AsyncMock) -> None:
     app = create_app(_settings())
@@ -107,6 +124,7 @@ def test_webhook_auth_stackstate_header(mock_send: AsyncMock) -> None:
     settings = Settings(
         mattermost_url="https://mm.example.com/hooks/abc",
         webhook_auth_token="secret",
+        monitoring_batch_enabled=False,
     )
     app = create_app(settings)
     with TestClient(app) as client:
@@ -127,6 +145,7 @@ def test_webhook_auth_bearer(mock_send: AsyncMock) -> None:
     settings = Settings(
         mattermost_url="https://mm.example.com/hooks/abc",
         webhook_auth_token="secret",
+        monitoring_batch_enabled=False,
     )
     app = create_app(settings)
     with TestClient(app) as client:

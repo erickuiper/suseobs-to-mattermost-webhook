@@ -1,4 +1,10 @@
-"""Monitoring batch coordinator and batch message rendering."""
+"""
+Monitoring batch coordinator and batch message rendering.
+
+Throttling only applies when ``MONITORING_BATCH_ENABLED=true`` (see README). Unit tests
+here assume the coordinator is used; API tests cover the default (batching off → every
+open posts to Mattermost immediately).
+"""
 
 import asyncio
 from unittest.mock import AsyncMock
