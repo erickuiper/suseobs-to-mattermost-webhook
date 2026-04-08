@@ -49,7 +49,7 @@ def test_mattermost_ssl_ca_bundle_empty_none(
 
 def test_resolved_close_message_template_default(mattermost_env: None) -> None:
     s = Settings()
-    assert s.resolved_close_message_template() == "{{ summary }}"
+    assert s.resolved_close_message_template() == "":white_check_mark: Alert closed: {{ monitor_name }}"
 
 
 def test_resolved_close_message_template_override(
