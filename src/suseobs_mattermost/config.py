@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_MESSAGE_TEMPLATE = """**SUSE Observability Alert**
+DEFAULT_MESSAGE_TEMPLATE = """** :exclamation: SUSE Observability Alert :exclamation: **
 
 **Error**
 - Summary: {{ summary }}
@@ -27,7 +27,7 @@ DEFAULT_MESSAGE_TEMPLATE = """**SUSE Observability Alert**
 - Monitor: {{ monitor_name }}
 """
 
-DEFAULT_CLOSE_MESSAGE_TEMPLATE = "{{ summary }}"
+DEFAULT_CLOSE_MESSAGE_TEMPLATE = ":white_check_mark: Alert closed: {{ monitor_name }}"
 
 
 class Settings(BaseSettings):
